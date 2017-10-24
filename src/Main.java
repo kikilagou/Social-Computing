@@ -1,63 +1,73 @@
-import java.io.File;
 import java.sql.*;
 
 /**
- * Created by Iarina Dafin on 17/10/24.
+ * Created by Iarina Dafin on 17/10/24
  */
 
 public class Main {
 
+    private Connection  connection;
+    private Statement statement;
+
     /**
-     * author: sqlitetutorial.net
-     * found at: https://sqlite.org/quickstart.html
+     * credits go to: sqlitetutorial.net
+     * found at: https://sqlite.org/quickstart.html and http://www.sqlitetutorial.net/sqlite-java/create-table/
      *
      * Connects to a new database.
-     * @param fileName the database file name
      */
-    public static void createNewDatabase (String fileName) {
+    private void createDatabase () {
 
-        String url = "jdbc:sqlite:" + System.getProperty("user.dir").replace('/', '\\') + fileName;
+        String url = "jdbc:sqlite:" + System.getProperty("user.dir").replace('/', '\\') + "\\SQLite\\" + "database.db";
 
         try {
-            Connection conn = DriverManager.getConnection(url);
+            connection = DriverManager.getConnection(url);
+            statement = connection.createStatement();
 
-            if (conn != null) {
-                DatabaseMetaData meta = conn.getMetaData();
-                System.out.println("The driver name is " + meta.getDriverName());
-                System.out.println("A new database has been created.");
-            }
-
-            String db = "jdbc:sqlite:SQLite";
+            DatabaseMetaData meta = connection.getMetaData();
+            System.out.println("The driver name is " + meta.getDriverName());
+            System.out.println("A new database has been created.");
 
             // SQL statement for creating a new table
-            String sql = "CREATE TABLE test (\n"
+            String sql = "CREATE TABLE database (\n"
                     + "	key integer PRIMARY KEY,\n"
                     + "	id int,\n"
                     + "	name varchar(255)"
                     + ");";
 
-            Statement stmt = conn.createStatement();
-            // create a new table
-            stmt.execute(sql);
+            statement.execute(sql);
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
 
-            String sqlinsert = "INSERT INTO test (id, name) VALUES(?,?)";
+    private void insertInto () {
+        try {
+            PreparedStatement insertStatement = connection.prepareStatement("INSERT INTO database (id, name) VALUES(?,?);");
 
-            PreparedStatement pstmt = conn.prepareStatement(sqlinsert);
-            pstmt.setInt(1, 13);
-            pstmt.setString(2, "name");
+            insertStatement.setInt(1, 13);
+            insertStatement.setString(2, "name");
 
-            pstmt.executeUpdate();
+            insertStatement.executeUpdate();
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
 
-            String sqlselect = "SELECT * FROM test";
-            ResultSet rs = stmt.executeQuery(sqlselect);
+    private void query () {
+        try {
+            ResultSet result = statement.executeQuery("SELECT * FROM database;");
 
-            while (rs.next()) {
-                System.out.println(rs.getInt("id") + rs.getString("name"));
+            while (result.next()) {
+                System.out.println(result.getInt("id") + " " + result.getString("name"));
             }
+        } catch (SQLException e) {
+            System.out.println(e.getMessage());
+        }
+    }
 
-            String sqldrop = "DROP TABLE IF EXISTS test";
-            stmt.execute(sqldrop);
-
+    private void dropTable () {
+        try {
+            statement.execute("DROP TABLE IF EXISTS database;");
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
@@ -67,6 +77,16 @@ public class Main {
      * @param args the command line arguments
      */
     public static void main (String[] args) {
-        createNewDatabase ("test.db");
+        Main main = new Main();
+
+        main.createDatabase();
+        main.insertInto();
+        main.query();
+
+        try {
+            main.connection.close();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
