@@ -57,6 +57,7 @@ public class Main {
      * Example query made on the db.
      */
     private void query () {
+        System.out.println("Test query of the first 10 lines of the CSV.");
         try {
             ResultSet result = statement.executeQuery("SELECT * FROM database LIMIT 10;");
 
