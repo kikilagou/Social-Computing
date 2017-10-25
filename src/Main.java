@@ -1,3 +1,4 @@
+import java.io.File;
 import java.sql.*;
 
 /**
@@ -30,14 +31,15 @@ public class Main {
     }
 
     /**
-     * Creates a new database if needed.
+     * Creates a new database if not created already.
      */
-    public void createDatabase () {
-        dropTable();
-
+    @SuppressWarnings("unused")
+    private void createDatabase() {
         try {
+            dropTable();
+
             DatabaseMetaData meta = connection.getMetaData();
-            System.out.println("The driver name is " + meta.getDriverName());
+            System.out.println("The driver name is " + meta.getDriverName() + ".");
             System.out.println("A new database has been created.");
 
             // SQL statement for creating a new table
@@ -72,6 +74,10 @@ public class Main {
     private void dropTable () {
         try {
             statement.execute("DROP TABLE IF EXISTS database;");
+
+            if (new File("SQLite/database.db").delete()) {
+                System.out.println("Database file deleted.");
+            }
         } catch (SQLException e) {
             System.out.println(e.getMessage());
         }
