@@ -71,6 +71,9 @@ public class Main {
         }
     }
 
+    /**
+     * Drops the table and deletes the file in case the active database needs to be recomputed.
+     */
     private void dropTable () {
         try {
             statement.execute("DROP TABLE IF EXISTS database;");
@@ -84,15 +87,62 @@ public class Main {
     }
 
     /**
+     * Queries the database one line at a time.
+     */
+    private void loadData () {
+        int size = computeSize();
+        int count = 0;
+
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM database LIMIT ? OFFSET 1;");
+            ResultSet results;
+
+            while (count <= size) {
+                preparedStatement.setInt(1, count);
+                results = preparedStatement.executeQuery();
+                count++;
+
+                // space for any computation
+            }
+            System.out.println("Database queried: " + count + " records.");
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Queries and returns the number of rows in a database.
+     * @return the number of rows in the queried database
+     */
+    private int computeSize () {
+        try {
+            PreparedStatement preparedStatement = connection.prepareStatement("SELECT COUNT(*) FROM database");
+            ResultSet result = preparedStatement.executeQuery();
+            return result.getInt(1);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return 0;
+    }
+
+    /**
      * @param args the command line arguments
      */
     public static void main (String[] args) throws SQLException {
+
+        long startTime = System.currentTimeMillis();
+
         Main main = new Main();
 
         main.connectDatabase();
+        //main.query();
+        main.loadData();
 
-        main.query();
+        main.connection.close();
 
+        long endTime   = System.currentTimeMillis();
+        long totalTime = endTime - startTime;
+        System.out.println("Computed in: " + totalTime/1000 + " seconds.");
         try {
             main.connection.close();
         } catch (SQLException e) {
