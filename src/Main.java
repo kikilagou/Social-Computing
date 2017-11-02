@@ -143,7 +143,7 @@ public class Main {
         return -1;
     }
 
-    private float ii (int user1, int user2) {
+    private float uuformula (int user1, int user2) {
         try {
             numarator = -1;
             stat.setInt(1, user1);
