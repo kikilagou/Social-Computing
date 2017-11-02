@@ -12,7 +12,10 @@ public class Main {
     private Statement statement;
     private PreparedStatement stat;
     private float[][] simMatrix = new float[5000][5000];
-    private HashMap<Integer, Float> map = new HashMap<Integer, Float>();
+    private HashMap<Integer, Float> map = new HashMap<>();
+    private float c1, c2;
+    private float average;
+    private float numarator;
 
     /**
      * credits go to: sqlitetutorial.net
@@ -144,6 +147,7 @@ public class Main {
      */
     private float average (int par) {
         if (map.containsKey(par)) {
+            float i = map.get(par);
             return map.get(par);
         }
         return -1;
@@ -154,23 +158,28 @@ public class Main {
      */
     private float formula (int item1, int item2) {
         try {
+            numarator = -1;
             stat.setInt(1, item1);
             stat.setInt(2, item2);
+            long s = System.currentTimeMillis();
             ResultSet res = stat.executeQuery();
+            long query =(System.currentTimeMillis()-s)/1000;
+            System.out.println("query " + query);
 
-            float c1, c2;
-            float average;
-            float numarator = -1;
-
+            long comp = System.currentTimeMillis();
             while (res.next()) {
+
+                numarator = 0;
+
                 average = average(res.getInt(1));
 
                 c1 = res.getInt(2) - average;
-
                 c2 = res.getInt(3) - average;
 
                 numarator += c1 * c2;
+
             }
+            System.out.println("computation " + (System.currentTimeMillis()-comp)/1000);
             if (numarator == -1)
                 System.out.println("set is empty for " + item1 + " and " + item2);
 
