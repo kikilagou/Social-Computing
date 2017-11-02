@@ -1,3 +1,5 @@
+import javafx.util.Pair;
+
 import java.io.File;
 import java.sql.*;
 import java.util.HashMap;
@@ -11,6 +13,8 @@ public class Main {
     private Connection  connection;
     private Statement statement;
     private PreparedStatement stat;
+    private HashMap<Pair<Integer, Integer>, Float> similii = new HashMap<>();
+    private HashMap<Pair<Integer, Integer>, Float> similuu = new HashMap<>();
     private float[][] simMatrix = new float[5000][5000];
     private HashMap<Integer, Float> map = new HashMap<>();
     private float c1, c2;
@@ -77,58 +81,6 @@ public class Main {
         }
     }
 
-    /**
-     * Queries the database one line at a time.
-     */
-    private void loadData () {
-        int count = 0;
-
-
-        try {
-            PreparedStatement preparedStatement = connection.prepareStatement("SELECT * FROM database LIMIT 1 OFFSET ?;");
-            ResultSet results;
-
-            String sql = "CREATE TABLE IF NOT EXISTS test ("
-                    + "userID varchar(255), ";
-
-            PreparedStatement preparedStat = connection.prepareStatement("select distinct itemID from database limit 1 offset ?;");
-            ResultSet column;
-
-            //creates 5 columns for 5 items
-            while (count < 150) {
-                preparedStatement.setInt(1, count);
-
-                preparedStat.setInt(1, count);
-                column = preparedStat.executeQuery();
-                count++;
-
-                sql = sql.concat("'" + column.getInt(1) + "'" + " varchar(255), ");
-                // space for any computation
-            }
-            sql = sql.substring(0, sql.length() - 2) + ");";
-            System.out.println(sql);
-
-            statement.execute(sql);
-
-            statement.execute("INSERT INTO test (userID) select distinct userID from database;");
-
-            count = 0;
-            while (count < 150) {
-                preparedStatement.setInt(1, count);
-                results = preparedStatement.executeQuery();
-                count++;
-
-                statement.execute("update test set '" + results.getInt(2) + "' = (select rating from database where" +
-                        " userID = " + results.getInt(1) + " and itemID = " + results.getInt(2) + ") where userID = " +
-                        results.getInt(1) + ";");
-            }
-
-            System.out.println("Database queried: " + count + " records.");
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-    }
-
     private void computeAvgMap(){
         try {
             float f;
@@ -140,8 +92,8 @@ public class Main {
         } catch (SQLException e) {
             e.printStackTrace();
         }
-
     }
+
     /**
      * Calculates average of all ratings of one user.
      */
@@ -156,19 +108,18 @@ public class Main {
     /**
      * Gets all users that rated two certain given items.
      */
-    private float formula (int item1, int item2) {
+    private float iiformula (int item1, int item2) {
         try {
+            //long a = System.currentTimeMillis();
             numarator = -1;
             stat.setInt(1, item1);
             stat.setInt(2, item2);
-            long s = System.currentTimeMillis();
             ResultSet res = stat.executeQuery();
-            long query =(System.currentTimeMillis()-s)/1000;
-            System.out.println("query " + query);
+            //long b =(System.currentTimeMillis() - a);
 
-            long comp = System.currentTimeMillis();
+            //System.out.println("query " + b);
+
             while (res.next()) {
-
                 numarator = 0;
 
                 average = average(res.getInt(1));
@@ -177,11 +128,38 @@ public class Main {
                 c2 = res.getInt(3) - average;
 
                 numarator += c1 * c2;
-
             }
-            System.out.println("computation " + (System.currentTimeMillis()-comp)/1000);
-            if (numarator == -1)
-                System.out.println("set is empty for " + item1 + " and " + item2);
+            //System.out.println("compute " + (System.currentTimeMillis() - a - b));
+
+            //System.out.println("computation " + (System.currentTimeMillis()-comp)/1000);
+            //if (numarator == -1)
+                //System.out.println("set is empty for " + item1 + " and " + item2);
+
+            return numarator;
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return -1;
+    }
+
+    private float ii (int user1, int user2) {
+        try {
+            numarator = -1;
+            stat.setInt(1, user1);
+            stat.setInt(2, user2);
+            ResultSet res = stat.executeQuery();
+
+            while (res.next()) {
+                numarator = 0;
+
+                average = average(res.getInt(1));
+
+                c1 = res.getInt(2) - average;
+                c2 = res.getInt(3) - average;
+
+                numarator += c1 * c2;
+            }
 
             return numarator;
 
@@ -202,19 +180,24 @@ public class Main {
 
         main.connectDatabase();
 
+        main.computeAvgMap();
+        long avg = (System.currentTimeMillis() - startTime)/1000;
+        System.out.println("averages done " + avg);
+
         main.stat = main.connection.prepareStatement("select s.userID, s.rating, p.rating from database s inner join database p where s.userID = p.userID and s.itemID = ? AND p.itemID = ?;");
 
-        main.computeAvgMap();
-        System.out.println("averages done " + (System.currentTimeMillis() - startTime)/1000);
+        long statej = (System.currentTimeMillis() - startTime - avg)/1000;
+        System.out.println("statement done " + statej);
 
-        for(int i = 1; i < 5000; ++i){
-            for(int j = i+1; j<5000; ++j) {
-                System.out.println("i[" + i + "] j[" + j + "]");
-                long st = System.currentTimeMillis();
-                main.simMatrix[i][j] = main.formula(i, j);
-                System.out.println("checked in: " + (System.currentTimeMillis() - st)/1000);
+        for(int i = 1; i < 500; ++i){
+            for(int j = i+1; j<500; ++j) {
+                main.similii.put(new Pair<>(i, j), main.iiformula(i, j));
             }
+            System.out.println("ye: " + (System.currentTimeMillis() - startTime - avg - statej)/1000);
         }
+
+        main.stat = main.connection.prepareStatement("select s.itemID, s.rating, p.rating from database s inner join database p where s.itemID = p.itemID and s.itemID = ? AND p.itemID = ?;");
+
         main.connection.close();
 
         long endTime   = System.currentTimeMillis();
