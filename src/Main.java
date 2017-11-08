@@ -1,5 +1,3 @@
-import javafx.util.Pair;
-
 import java.io.File;
 import java.sql.*;
 import java.util.HashMap;
@@ -13,13 +11,7 @@ public class Main {
     private Connection  connection;
     private Statement statement;
     private PreparedStatement stat;
-    private HashMap<Pair<Integer, Integer>, Float> similii = new HashMap<>();
-    private HashMap<Pair<Integer, Integer>, Float> similuu = new HashMap<>();
-    private float[][] simMatrix = new float[5000][5000];
     private HashMap<Integer, Float> map = new HashMap<>();
-    private float c1, c2;
-    private float average;
-    private float numarator;
 
     /**
      * credits go to: sqlitetutorial.net
@@ -94,79 +86,35 @@ public class Main {
         }
     }
 
-    /**
-     * Calculates average of all ratings of one user.
-     */
-    private float average (int par) {
-        if (map.containsKey(par)) {
-            float i = map.get(par);
-            return map.get(par);
-        }
-        return -1;
-    }
-
-    /**
-     * Gets all users that rated two certain given items.
-     */
-    private float iiformula (int item1, int item2) {
+    private float formula (int i, int j) {
         try {
-            //long a = System.currentTimeMillis();
-            numarator = -1;
-            stat.setInt(1, item1);
-            stat.setInt(2, item2);
-            ResultSet res = stat.executeQuery();
-            //long b =(System.currentTimeMillis() - a);
+            float average;
+            float item1, item2;
+            float numarator = 0;
+            float sumOfitem1 = 0;
+            float sumOfitem2 = 0;
 
-            //System.out.println("query " + b);
+            stat.setInt(1, i);
+            stat.setInt(2, j);
+            ResultSet results = stat.executeQuery();
 
-            while (res.next()) {
-                numarator = 0;
+            while (results.next()) {
+                average = map.get(results.getInt(1));
+                item1 = results.getInt(2) - average;
+                item2 = results.getInt(3) - average;
 
-                average = average(res.getInt(1));
+                numarator = numarator + (item1 * item2);
 
-                c1 = res.getInt(2) - average;
-                c2 = res.getInt(3) - average;
-
-                numarator += c1 * c2;
+                sumOfitem1 = sumOfitem1 + (item1 * item1);
+                sumOfitem2 = sumOfitem2 + (item2 * item2);
             }
-            //System.out.println("compute " + (System.currentTimeMillis() - a - b));
 
-            //System.out.println("computation " + (System.currentTimeMillis()-comp)/1000);
-            //if (numarator == -1)
-                //System.out.println("set is empty for " + item1 + " and " + item2);
-
-            return numarator;
+            return numarator / (((float) Math.sqrt(sumOfitem1)) * ((float) Math.sqrt(sumOfitem2)));
 
         } catch (SQLException e) {
             e.printStackTrace();
         }
-        return -1;
-    }
-
-    private float uuformula (int user1, int user2) {
-        try {
-            numarator = -1;
-            stat.setInt(1, user1);
-            stat.setInt(2, user2);
-            ResultSet res = stat.executeQuery();
-
-            while (res.next()) {
-                numarator = 0;
-
-                average = average(res.getInt(1));
-
-                c1 = res.getInt(2) - average;
-                c2 = res.getInt(3) - average;
-
-                numarator += c1 * c2;
-            }
-
-            return numarator;
-
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
-        return -1;
+        return -2;
     }
 
     /**
@@ -179,24 +127,39 @@ public class Main {
         Main main = new Main();
 
         main.connectDatabase();
+        main.connection.setAutoCommit(false);
+        main.connection.createStatement().execute("delete from itembased;");
 
         main.computeAvgMap();
         long avg = (System.currentTimeMillis() - startTime)/1000;
-        System.out.println("averages done " + avg);
+        System.out.println("Averages done in: " + avg + "s");
 
         main.stat = main.connection.prepareStatement("select s.userID, s.rating, p.rating from database s inner join database p where s.userID = p.userID and s.itemID = ? AND p.itemID = ?;");
 
-        long statej = (System.currentTimeMillis() - startTime - avg)/1000;
-        System.out.println("statement done " + statej);
+        PreparedStatement put = main.connection.prepareStatement("insert into itembased (item1, item2, similarity) values (?, ?, ?);");
 
-        for(int i = 1; i < 500; ++i){
-            for(int j = i+1; j<500; ++j) {
-                main.similii.put(new Pair<>(i, j), main.iiformula(i, j));
+        float sim;
+
+        long eyyy = System.currentTimeMillis();
+
+        for(int i = 1; i < 100; ++i){
+            for(int j = i+1; j<100; ++j) {
+                //long naspa = System.currentTimeMillis();
+                sim = main.formula(i, j);
+                //System.out.println("calc " + (System.currentTimeMillis() - naspa));
+                //long simainaspa = System.currentTimeMillis();
+                put.setInt(1, i);
+                put.setInt(2, j);
+                put.setFloat(3, sim);
+                put.addBatch();
+                //System.out.println("put " + (System.currentTimeMillis() - simainaspa));
             }
-            System.out.println("ye: " + (System.currentTimeMillis() - startTime - avg - statej)/1000);
         }
-
-        main.stat = main.connection.prepareStatement("select s.itemID, s.rating, p.rating from database s inner join database p where s.itemID = p.itemID and s.itemID = ? AND p.itemID = ?;");
+        long calc = System.currentTimeMillis() - eyyy;
+        System.out.println("Calculations done in: " + calc + "ms");
+        put.executeBatch();
+        main.connection.commit();
+        System.out.println("Matrix imported in: " + (System.currentTimeMillis()- eyyy - calc) + "ms");
 
         main.connection.close();
 
